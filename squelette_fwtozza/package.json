@@ -1,0 +1,12 @@
+{
+  "name": "app-fwtozza",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "VERBOSE=1 node --watch server.js",
+    "test": "node test_engine.js && node tests/test_echo_board.js"
+  },
+  "dependencies": { "ws": "^8.18.0" },
+  "devDependencies": { "jsdom": "^25.0.0" }
+}

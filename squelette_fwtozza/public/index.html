@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>app fwtozza</title>
+</head>
+<body>
+  <div id="echo"></div>
+
+  <script type="module">
+    import Broker from "./fw/broker.js";
+    import WebSocketChannel from "./fw/channels/websocket_channel.js";
+    import CATALOG from "./catalogs/catalog.js";
+    import { CHANNEL } from "./catalogs/app.catalog.js";
+    import EchoPanel from "./components/echo_panel.js";
+
+    const VERBOSE = new URLSearchParams(location.search).has("verbose");
+    const url = `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/`;
+
+    const broker = new Broker(CATALOG, { verbose: VERBOSE });
+    const canal = new WebSocketChannel(broker, "canal_app", {
+      socket: new WebSocket(url),          // la ressource ouverte, pas son URL
+      reconnect: () => new WebSocket(url),
+      storage: sessionStorage,
+      channel: CHANNEL,
+    });
+
+    try {
+      await canal.ready(); // rien ne se monte avant le handshake
+    } catch (e) {
+      document.body.textContent = "serveur injoignable : " + e.message;
+      throw e;
+    }
+
+    const composants = [
+      new EchoPanel(broker, "echo", { support: document.getElementById("echo") }),
+    ];
+
+    for (const a of broker.audit([CHANNEL])) {
+      if (a.code === "orphan_emit" && a.name === "connection_event") continue; // le canal publie l'état du lien, personne ne l'écoute ici
+      (a.severity === "error" ? console.error : console.warn)(`${a.severity.toUpperCase()} (audit): ${a.message}`);
+    }
+
+    window.addEventListener("pagehide", () => { for (const c of composants) c.destroy(); canal.close(); });
+  </script>
+</body>
+</html>
